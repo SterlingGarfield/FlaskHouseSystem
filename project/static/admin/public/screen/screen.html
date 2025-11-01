@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>数据可视化大屏</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts-wordcloud/2.1.0/echarts-wordcloud.min.js"></script>
+    <script>
+        if (typeof echarts === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"><\/script>');
+        }
+    </script>
+    <link rel="stylesheet" href="./css/screen.css">
+    <script src="./base.js"></script>
+</head>
+<body>
+    <div class="screen-title">
+        欢迎使用智能房屋租赁系统
+    </div>
+    <!-- 用于显示日期和时间的 div -->
+    <div id="dateTimeDisplay" class="date-time-display">加载中...</div>
+    <!-- 数据表格 -->
+    <div class="overview">
+    </div>
+    <div class="container">
+    </div>
+    <script>
+        // 获取 时间展示DOM 元素
+        const dateTimeDisplay = document.getElementById('dateTimeDisplay');
+
+        // 获取当前日期和时间并格式化为“YYYY年MM月DD日 星期X HH:MM:SS”
+        function updateDateTime() {
+            const now = new Date();
+            const year = now.getFullYear(); // 获取年份
+            const month = String(now.getMonth() + 1).padStart(2, '0'); // 获取月份 (注意：getMonth 返回 0-11)
+            const day = String(now.getDate()).padStart(2, '0'); // 获取日期
+            const hours = String(now.getHours()).padStart(2, '0'); // 获取小时
+            const minutes = String(now.getMinutes()).padStart(2, '0'); // 获取分钟
+            const seconds = String(now.getSeconds()).padStart(2, '0'); // 获取秒
+
+            // 获取星期几
+            const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const weekDay = weekDays[now.getDay()];
+
+            // 将日期和时间格式化为 "YYYY年MM月DD日 星期X HH:MM:SS"
+            const formattedDateTime = `${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`;
+
+            // 更新 div 内容
+            dateTimeDisplay.textContent = formattedDateTime;
+        }
+
+        // 初始化时调用一次
+        updateDateTime();
+
+        // 每隔一秒更新一次
+        setInterval(updateDateTime, 1000);
+
+        // 用户列表缓存
+        let userListCache = [];
+
+        // 获取用户列表并缓存
+        async function fetchAndCacheUserList() {
+            await fetch(baseUrl + '/api/user/get_list')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.result && data.result.list) {
+                        userListCache = data.result.list;
+                    }
+                })
+                .catch(err => {
+                    console.error('获取用户列表失败:', err);
+                });
+        }
+
+        fetchAndCacheUserList();
+
+        // 通过 user_id 获取 nickname
+        function getNicknameByUserId(userId) {
+            const user = userListCache.find(u => u.user_id === userId);
+            return user ? user.nickname : '未知用户';
+        }
+
+        // 获取地址
+        function fullUrl(url) {
+            var url_new = "";
+            if (url) {
+                if (url.indexOf("~/") === 0) {
+                    url_new = url.replace('~/', baseUrl+'/');
+                } else if (url.indexOf("/http://") === 0) {
+                    url_new = url.replace('/http://', 'http://');
+                } else if (url.indexOf("/") === 0) {
+                    url_new = url.replace('/', baseUrl+'/');
+                } else if (url.indexOf("~") === 0) {
+                    url_new = url.replace('~', '');
+                } else {
+                    url_new = url;
+                }
+            }
+            return url_new;
+        }
+
+        // 处理时间
+        function toTime(time, format) {
+            let ret = "";
+            if(time){
+                let is_date = time instanceof Date;
+                let is_num = typeof(time) == 'number';
+                if(is_date){
+                    ret = time.toStr(format);
+                }
+                else if(is_num){
+                    let t = new Date(time);
+                    ret = t.toStr(format);
+                }
+                else {
+                    let reg = /^(20|21|22|23|[0-1]\d):[0-5]\d:[0-5]\d$/;
+                    let regExp = new RegExp(reg);
+                    if(regExp.test(time)){
+                        ret = time;
+                    }else {
+                        ret = toDateStr(new Date(time.replace('T', ' ').replace('Z', '').replaceAll('-', '/')),format);
+                    }
+                }
+            }
+            return ret;
+        }
+
+        function toDateStr(time,format) {
+            let o = {
+                "M+": time.getMonth() + 1,
+                "d+": time.getDate(),
+                "h+": time.getHours(),
+                "m+": time.getMinutes(),
+                "s+": time.getSeconds(),
+                "q+": Math.floor((time.getMonth() + 3) / 3),
+                "S": time.getMilliseconds()
+            };
+            if (/(y+)/.test(format)) {
+                let x = RegExp.$1;
+                format = format.replace(x, (time.getFullYear() + "").substr(4 - x.length));
+            }
+            for (let k in o) {
+                if (new RegExp("(" + k + ")").test(format)) {
+                    let x = RegExp.$1;
+                    format = format.replace(x, x.length === 1 ? o[k] : ("00" + o[k]).substr(("" + o[k]).length));
+                }
+            }
+            return format;
+        }
+
+
+        // 窗口大小改变时，重置图表大小
+        window.addEventListener('resize', function() {
+        });
+    </script>
+</body>
+</html>
